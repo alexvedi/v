@@ -1,6 +1,8 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8">
+    <title>AR.js con GIF Animado</title>
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
@@ -18,7 +20,7 @@
       gesture-detector
     >
       <a-assets>
-        <!-- El canvas donde se dibuja el gif -->
+        <!-- Canvas donde se reproducirá el GIF -->
         <canvas id="gifCanvas" width="512" height="512"></canvas>
       </a-assets>
 
@@ -31,7 +33,7 @@
         cursor="fuse: false; rayOrigin: mouse;"
         id="markerA"
       >
-        <!-- El plano que mostrará la textura del canvas -->
+        <!-- Plano con textura del canvas -->
         <a-plane
           src="#gifCanvas"
           scale="1 1 1"
@@ -45,18 +47,28 @@
     </a-scene>
 
     <script>
-      // Reproduce el gif dentro del canvas
       const canvas = document.getElementById('gifCanvas');
       const ctx = canvas.getContext('2d');
 
+      // Carga y reproduce el GIF en el canvas
       gifler('assets/asset.gif').get(animation => {
-        animation.animateInCanvas(canvas);
-        animation.onDrawFrame = function(ctx, frame) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height); // limpia el frame anterior
+        animation.onDrawFrame = function (ctx, frame) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(frame.buffer, 0, 0, canvas.width, canvas.height);
         };
+        animation.loopCount = 0; // 0 = loop infinito
         animation.play();
       });
+
+      // Fuerza que A-Frame actualice la textura del canvas en cada frame
+      function updateTexture() {
+        const el = document.querySelector('[src="#gifCanvas"]');
+        if (el && el.components.material && el.components.material.material.map) {
+          el.components.material.material.map.needsUpdate = true;
+        }
+        requestAnimationFrame(updateTexture);
+      }
+      updateTexture();
     </script>
   </body>
 </html>
