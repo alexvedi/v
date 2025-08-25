@@ -16,13 +16,12 @@
         arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;" id="scene" embedded gesture-detector>
 
         <a-assets>
-            <img id="mygif" src="assets/asset.gif" crossorigin="anonymous" />
+            <img id="mygif" src="assets/asset.gif" />
         </a-assets>
 
         <a-marker id="animated-marker" type="pattern" preset="custom" url="assets/marker.patt"
             raycaster="objects: .clickable" emitevents="true" cursor="fuse: false; rayOrigin: mouse;" id="markerA">
-            <a-image shader="gif" src="#mygif" scale="1 1 1" class="clickable" rotation="0 0 0"
-                gesture-handler></a-image>
+            <a-image geometry="primitive:plane;width:2;height:2;" position="1.2 -2.125 -1" material="shader:gif;src:#mygif;alphaTest:0.5;"></a-image>
         </a-marker>
 
         <a-entity camera></a-entity>
@@ -30,3 +29,7 @@
 </body>
 
 </html>
+
+
+
+<a-entity ></a-entity>
