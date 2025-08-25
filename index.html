@@ -1,26 +1,54 @@
 <!doctype html>
 <html>
   <head>
-    <meta charset="utf-8">
-    <title>AR.js con GIF Animado</title>
+    <meta charset="utf-8" />
+    <title>AR.js con GIF animado vía canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- A-Frame + AR.js -->
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <!-- Gestos (opcional, como en tu proyecto) -->
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
-    <!-- Librería gifler -->
+
+    <!-- gifler para reproducir GIFs en canvas -->
     <script src="https://unpkg.com/gifler/gifler.min.js"></script>
+
+    <!-- Componente A-Frame para actualizar textura de canvas en cada frame -->
+    <script>
+      AFRAME.registerComponent('canvas-gif-texture', {
+        schema: { src: { type: 'selector' } },
+        init: function () {
+          // Fuerza material plano y transparente; asigna el canvas como textura
+          this.el.setAttribute('material', 'shader: flat; transparent: true; side: double; src: ' + this.data.src.id);
+          this.texture = null;
+
+          // Cuando A-Frame cree la textura, la guardamos para marcarla como "needsUpdate"
+          this.el.addEventListener('materialtextureloaded', (e) => {
+            this.texture = e.detail.texture;
+          });
+        },
+        tick: function () {
+          if (this.texture) {
+            this.texture.needsUpdate = true;
+          }
+        }
+      });
+    </script>
   </head>
 
-  <body style="margin: 0; overflow: hidden;">
+  <body style="margin:0; overflow:hidden;">
     <a-scene
-      vr-mode-ui="enabled: false;"
-      loading-screen="enabled: false;"
-      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      loading-screen="enabled: false"
       embedded
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
       gesture-detector
     >
       <a-assets>
-        <!-- Canvas donde se reproducirá el GIF -->
+        <!-- Canvas POT (power-of-two) recomendado para texturas -->
         <canvas id="gifCanvas" width="512" height="512"></canvas>
       </a-assets>
 
@@ -33,10 +61,12 @@
         cursor="fuse: false; rayOrigin: mouse;"
         id="markerA"
       >
-        <!-- Plano con textura del canvas -->
+        <!-- Plano que usa el canvas como textura mediante el componente -->
         <a-plane
-          src="#gifCanvas"
-          scale="1 1 1"
+          id="gifPlane"
+          canvas-gif-texture="src: #gifCanvas"
+          width="1"
+          height="1"
           rotation="-90 0 0"
           class="clickable"
           gesture-handler
@@ -47,28 +77,40 @@
     </a-scene>
 
     <script>
+      // --- Reproducción del GIF dentro del canvas con gifler ---
       const canvas = document.getElementById('gifCanvas');
       const ctx = canvas.getContext('2d');
 
-      // Carga y reproduce el GIF en el canvas
-      gifler('assets/asset.gif').get(animation => {
-        animation.onDrawFrame = function (ctx, frame) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(frame.buffer, 0, 0, canvas.width, canvas.height);
-        };
-        animation.loopCount = 0; // 0 = loop infinito
-        animation.play();
-      });
+      // Carga con crossOrigin por si el GIF viene de otro dominio (si es mismo dominio, no afecta)
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = 'assets/asset.gif';
 
-      // Fuerza que A-Frame actualice la textura del canvas en cada frame
-      function updateTexture() {
-        const el = document.querySelector('[src="#gifCanvas"]');
-        if (el && el.components.material && el.components.material.material.map) {
-          el.components.material.material.map.needsUpdate = true;
-        }
-        requestAnimationFrame(updateTexture);
-      }
-      updateTexture();
+      img.onload = () => {
+        gifler(img).get((anim) => {
+          // Limpia y dibuja cada frame a tamaño del canvas
+          anim.onDrawFrame = function (ctx2d, frame) {
+            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2d.drawImage(frame.buffer, 0, 0, canvas.width, canvas.height);
+          };
+          anim.loopCount = 0;            // 0 = infinito
+          anim.setFrameIndex(0);
+          anim.animateInCanvas(canvas);  // inicializa el loop interno de gifler
+          anim.play();
+        });
+      };
+
+      img.onerror = (e) => {
+        console.error('No se pudo cargar assets/asset.gif', e);
+      };
+
+      // (Opcional) Dibuja un placeholder por si tarda en cargar el GIF
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = '28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Cargando GIF…', canvas.width / 2, canvas.height / 2);
     </script>
   </body>
 </html>
