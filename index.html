@@ -1,35 +1,62 @@
 <!doctype html>
 <html>
-
-<head>
+  <head>
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://rawgit.com/mayognaise/aframe-gif-shader/master/dist/aframe-gif-shader.min.js"></script>
-    <script
-        src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-    <script
-        src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
-</head>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
+    <!-- Librería gifler -->
+    <script src="https://unpkg.com/gifler/gifler.min.js"></script>
+  </head>
 
-<body style="margin: 0; overflow: hidden;">
-    <a-scene vr-mode-ui="enabled: false;" loading-screen="enabled: false;"
-        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;" id="scene" embedded gesture-detector>
+  <body style="margin: 0; overflow: hidden;">
+    <a-scene
+      vr-mode-ui="enabled: false;"
+      loading-screen="enabled: false;"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      embedded
+      gesture-detector
+    >
+      <a-assets>
+        <!-- El canvas donde se dibuja el gif -->
+        <canvas id="gifCanvas" width="512" height="512"></canvas>
+      </a-assets>
 
-        <a-assets>
-            <img id="mygif" src="assets/asset.gif" />
-        </a-assets>
+      <a-marker
+        type="pattern"
+        preset="custom"
+        url="assets/marker.patt"
+        raycaster="objects: .clickable"
+        emitevents="true"
+        cursor="fuse: false; rayOrigin: mouse;"
+        id="markerA"
+      >
+        <!-- El plano que mostrará la textura del canvas -->
+        <a-plane
+          src="#gifCanvas"
+          scale="1 1 1"
+          rotation="-90 0 0"
+          class="clickable"
+          gesture-handler
+        ></a-plane>
+      </a-marker>
 
-        <a-marker id="animated-marker" type="pattern" preset="custom" url="assets/marker.patt"
-            raycaster="objects: .clickable" emitevents="true" cursor="fuse: false; rayOrigin: mouse;" id="markerA">
-            <a-image geometry="primitive:plane;width:2;height:2;" position="1.2 -2.125 -1" material="shader:gif;src:#mygif;alphaTest:0.5;"></a-image>
-        </a-marker>
-
-        <a-entity camera></a-entity>
+      <a-entity camera></a-entity>
     </a-scene>
-</body>
 
+    <script>
+      // Reproduce el gif dentro del canvas
+      const canvas = document.getElementById('gifCanvas');
+      const ctx = canvas.getContext('2d');
+
+      gifler('assets/asset.gif').get(animation => {
+        animation.animateInCanvas(canvas);
+        animation.onDrawFrame = function(ctx, frame) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height); // limpia el frame anterior
+          ctx.drawImage(frame.buffer, 0, 0, canvas.width, canvas.height);
+        };
+        animation.play();
+      });
+    </script>
+  </body>
 </html>
-
-
-
-<a-entity ></a-entity>
