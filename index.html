@@ -1,19 +1,102 @@
+<!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AR.js + A-Frame + GIF vía Canvas</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-<head>
-    <script src="vendor/artoolkit.min.js"></script>
-    <script src="vendor/three.min.js"></script>
-    <script src="vendor/artoolkit.three.js"></script>
-    <script src="ar-gif.min.js" defer></script>
-</head>
+    <!-- A-Frame y AR.js -->
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-<body style="overflow: hidden; margin:0;">
-    <ar-scene>
-        <ar-marker patt="assets/marker.patt">
-            <ar-content src="assets/asset.gif" scale="1.5 1.5" position="0 0 0" rotation="90 0 0">
-            </ar-content>
-        </ar-marker>
-    </ar-scene>
-</body>
+    <!-- (Opcional) gestos como en tu proyecto -->
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
 
+    <!-- gifler: CDN correcto (v0.1.0) -->
+    <script src="https://cdn.jsdelivr.net/npm/gifler@0.1.0/gifler.min.js"></script>
+
+    <!-- Componente para usar el canvas como textura y refrescarla cada frame -->
+    <script>
+      AFRAME.registerComponent('canvas-gif-texture', {
+        schema: { src: { type: 'selector' } },
+        init: function () {
+          const id = this.data.src && this.data.src.id;
+          if (!id) { console.warn('[canvas-gif-texture] Falta canvas en "src".'); return; }
+          // Material plano, transparente y doble cara; enlaza el canvas como textura
+          this.el.setAttribute('material', `shader: flat; transparent: true; side: double; src: #${id}`);
+        },
+        tick: function () {
+          const mesh = this.el.getObject3D('mesh');
+          if (mesh && mesh.material && mesh.material.map) {
+            mesh.material.map.needsUpdate = true; // fuerza refresco de textura
+          }
+        }
+      });
+    </script>
+  </head>
+
+  <body style="margin:0;overflow:hidden;">
+    <a-scene
+      vr-mode-ui="enabled:false"
+      loading-screen="enabled:false"
+      embedded
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+      gesture-detector
+    >
+      <a-assets>
+        <!-- POT recomendado para texturas -->
+        <canvas id="gifCanvas" width="512" height="512"></canvas>
+      </a-assets>
+
+      <a-marker
+        type="pattern"
+        preset="custom"
+        url="assets/marker.patt"
+        raycaster="objects: .clickable"
+        emitevents="true"
+        cursor="fuse:false; rayOrigin: mouse;"
+        id="markerA"
+      >
+        <a-plane
+          id="gifPlane"
+          canvas-gif-texture="src: #gifCanvas"
+          width="1" height="1"
+          rotation="-90 0 0"
+          class="clickable"
+          gesture-handler
+        ></a-plane>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      // --- Dibujo inicial (placeholder) ---
+      const canvas = document.getElementById('gifCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff'; ctx.font = '24px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Cargando GIF…', canvas.width/2, canvas.height/2);
+
+      // --- Animación del GIF con la API oficial de gifler ---
+      // Opción A: simple y fiable (gifler gestiona los disposals y el timing).
+      gifler('assets/asset.gif')
+        .animate(canvas)               // también acepta '#gifCanvas'
+        .then(function (animator) {    // Promise: puedes pausar/reanudar si quieres
+          // animator.start(); // animate() ya empieza; deja la línea por si quieres controlarlo
+        })
+        .catch(function (err) {
+          console.error('Error cargando/animando el GIF:', err);
+        });
+
+      // --- Opción B (comentada): render manual por frame si necesitas limpiar tú mismo ---
+      /*
+      gifler('assets/asset.gif').frames(canvas, function (ctx2d, frame) {
+        ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+        ctx2d.drawImage(frame.buffer, 0, 0, canvas.width, canvas.height);
+      }, true); // true = ajusta el tamaño del canvas al del GIF
+      */
+    </script>
+  </body>
 </html>
